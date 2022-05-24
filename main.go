@@ -11,25 +11,33 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 )
 
 func main() {
 
-	fmt.Println("Checking golang latest version from https://go.dev/dl/")
+	// Get latest version of Go from go.dev/dl
 	goLatestVer, err := getGoLatestVersion()
-	goLatestVer = strings.Split(goLatestVer, "go")[1]
 	if err != nil {
 		fmt.Println("error: couldn't get golang version from https://go.dev/dl/")
 		return
 	}
-	goCurrentVer := runtime.Version()
-	goCurrentVer = strings.Split(goCurrentVer, "go")[1]
+	fmt.Printf("Latest version found at go.dev/dl: %s\n", goLatestVer)
+	goLatestVer = strings.Split(goLatestVer, "go")[1]
 	downloadUrl := fmt.Sprintf("https://go.dev/dl/go%s.linux-amd64.tar.gz", goLatestVer)
 
+	// Get current installed version
+	goCurrentVer, err := getInstalledVersion()
+	if err != nil {
+		goCurrentVer = "go0.0.0"
+		fmt.Println("Go installation not found on this system. Installing it now...")
+	} else {
+		fmt.Printf("Installed version on this system: %s\n", goCurrentVer)
+	}
+	goCurrentVer = strings.Split(goCurrentVer, "go")[1]
 
+	// Reformat installed and latest go versions to []uint64 type
 	var current, target []uint64
 	for _, v := range strings.Split(goCurrentVer, ".") {
 		n, err := strconv.ParseUint(v, 0, 64)
@@ -50,15 +58,12 @@ func main() {
 
 	// Check if latest version is newer than current, exit otherwise
 	if !isNewerVersion(current, target) {
-		fmt.Println("There's no upgrade needed")
+		fmt.Println("Upgrade not needed")
 		return
 	}
-	fmt.Printf("Latest version found: go%s\nInstalled version: go%s\n", goLatestVer, goCurrentVer)
-	fmt.Printf("Upgrading from go%s to go%s\n", goCurrentVer, goLatestVer)
 
 	// Download package from source
 	goLatestVer = fmt.Sprintf("go%s", goLatestVer)
-
 
 	packagePath := fmt.Sprintf("/tmp/%s.linux-amd64.tar.gz", goLatestVer)
 	_, err = os.Stat(packagePath)
@@ -80,10 +85,6 @@ func main() {
 
 	// Remove previous installation
 	goInstallDir := path.Join("/", "usr", "local")
-	_, err = os.Stat("/usr/local/go")
-	if os.IsNotExist(err) {
-		fmt.Println("No previous installation found")
-	}
 	if err = os.RemoveAll(goInstallDir); err != nil {
 		fmt.Println(err)
 		return
@@ -94,7 +95,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Printf("Success, golang upgraded to version go%s\n", goLatestVer)
+	fmt.Printf("Success, golang version %s installed correctly\n", goLatestVer)
 }
 
 // getGoLatestVersion gets golang linux-amd64 latest version from go.dev
@@ -187,6 +188,7 @@ func unGzip(source, target string) error {
 	target = filepath.Join(target, archive.Name)
 	w, err := os.Create(target)
 	if err != nil {
+		fmt.Println(err)
 		return fmt.Errorf("error writing on %s", target)
 	}
 	defer w.Close()
@@ -234,4 +236,25 @@ func unTar(source, target string) error {
 	}
 
 	return nil
+}
+
+func getInstalledVersion() (string, error) {
+	path :="/usr/local/go/VERSION"
+	_, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("error: go installation not found")
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("error: couldn't open file %s", path)
+	}
+	defer f.Close()
+
+	version, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("error: couldn't read file %s", path)
+	}
+
+	return string(version), nil
 }

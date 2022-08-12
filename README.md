@@ -8,7 +8,7 @@ go build -o go-updater && sudo ./go-updater
 ```
 or
 ```Shell
-go run .
+sudo go run .
 ```
 
 ## Considerations

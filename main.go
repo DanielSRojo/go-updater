@@ -69,7 +69,7 @@ func main() {
 	_, err = os.Stat(packagePath)
 	if os.IsNotExist(err) {
 		fmt.Printf("Downloading %s from %s\n", goLatestVer, downloadUrl)
-		err = getPackage(goLatestVer, packagePath);
+		err = getPackage(goLatestVer, packagePath)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -84,7 +84,8 @@ func main() {
 	}
 
 	// Remove previous installation
-	goInstallDir := path.Join("/", "usr", "local")
+	goInstallDir := path.Join("/", "usr", "local", "go")
+	fmt.Sprintf("Removing previous installation on %s", goInstallDir)
 	if err = os.RemoveAll(goInstallDir); err != nil {
 		fmt.Println(err)
 		return
@@ -126,7 +127,7 @@ func getGoLatestVersion() (string, error) {
 
 // getPackage downloads golang linux-amd64 given version from go.dev/dl/
 // and writes it into /tmp. If success, it returns downloaded file path.
-func getPackage(version, target string) (error) {
+func getPackage(version, target string) error {
 	path := fmt.Sprintf("/tmp/%s.linux-amd64.tar.gz", version)
 	url := fmt.Sprintf("https://go.dev/dl/%s.linux-amd64.tar.gz", version)
 
@@ -160,6 +161,9 @@ func getPackage(version, target string) (error) {
 // is newest than the second one. Format used is mayor.minor.patch as []uint64
 func isNewerVersion(current, target []uint64) bool {
 
+	current = formatVersion(current)
+	target = formatVersion(target)
+
 	if target[0] > current[0] {
 		return true
 	} else if target[0] == current[0] && target[1] > current[1] {
@@ -169,6 +173,19 @@ func isNewerVersion(current, target []uint64) bool {
 	}
 
 	return false
+}
+
+func formatVersion(v []uint64) []uint64{
+
+	// Ensure version has M.m.p forat
+	for {
+		if len(v) >= 3 {
+			break
+		}
+		v = append(v, 0)
+	}
+
+	return v
 }
 
 func unGzip(source, target string) error {
@@ -239,7 +256,7 @@ func unTar(source, target string) error {
 }
 
 func getInstalledVersion() (string, error) {
-	path :="/usr/local/go/VERSION"
+	path := "/usr/local/go/VERSION"
 	_, err := os.Stat(path)
 	if err != nil {
 		return "", fmt.Errorf("error: go installation not found")
